@@ -1684,10 +1684,10 @@ protected:
         AggregateColumnsData & aggregate_columns) const;
 
     template <typename Type>
-    void insertIntoBlockFromNullRowFinal(const Type &, MutableColumns &, MutableColumns &) {}
+    void insertIntoBlockFromNullRowFinal(const Type &, MutableColumns &, MutableColumns &) const {}
 
     template <typename Type>
-    void insertIntoBlockFromNullRowNotFinal(const Type &, MutableColumns &, Aggregator::AggregateColumnsData &)  {}
+    void insertIntoBlockFromNullRowNotFinal(const Type &, MutableColumns &, Aggregator::AggregateColumnsData &) const {}
 
     template <typename Filler>
     Block prepareBlockAndFill(
