@@ -1648,15 +1648,14 @@ protected:
     void mergeSingleLevelDataImpl(
         ManyAggregatedDataVariants & non_empty_data) const;
 
-    template <typename Method, typename Table, bool two_level>
+    template <typename Method, typename Table>
     void convertToBlockImpl(
         Method & method,
         Table & data,
         MutableColumns & key_columns,
         AggregateColumnsData & aggregate_columns,
         MutableColumns & final_aggregate_columns,
-        bool final,
-        bool two_level) const;
+        bool final) const;
 
     template <typename Method, typename Table, bool two_level>
     void convertToBlockImplFinal(
