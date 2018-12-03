@@ -104,14 +104,14 @@ struct AggregationDataWithNullKey : public Base
     AggregateDataPtr null_key_data = nullptr;
 };
 
-using AggregatedDataWithNullableUInt8Key = AggregatedDataWithUInt8Key;
-using AggregatedDataWithNullableUInt16Key = AggregatedDataWithUInt16Key;
+using AggregatedDataWithNullableUInt8Key = AggregationDataWithNullKey<AggregatedDataWithUInt8Key>;
+using AggregatedDataWithNullableUInt16Key = AggregationDataWithNullKey<AggregatedDataWithUInt16Key>;
 
-using AggregatedDataWithNullableUInt64Key = AggregatedDataWithUInt64Key;
-using AggregatedDataWithNullableStringKey = AggregatedDataWithStringKey;
+using AggregatedDataWithNullableUInt64Key = AggregationDataWithNullKey<AggregatedDataWithUInt64Key>;
+using AggregatedDataWithNullableStringKey = AggregationDataWithNullKey<AggregatedDataWithStringKey>;
 
-using AggregatedDataWithNullableUInt64KeyTwoLevel = AggregatedDataWithUInt64KeyTwoLevel;
-using AggregatedDataWithNullableStringKeyTwoLevel = AggregatedDataWithStringKeyTwoLevel;
+using AggregatedDataWithNullableUInt64KeyTwoLevel = AggregationDataWithNullKey<AggregatedDataWithUInt64KeyTwoLevel>;
+using AggregatedDataWithNullableStringKeyTwoLevel = AggregationDataWithNullKey<AggregatedDataWithStringKeyTwoLevel>;
 
 /// Cache which can be used by aggregations method's states. Object is shared in all threads.
 struct AggregationStateCache
