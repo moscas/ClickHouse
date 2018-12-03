@@ -92,8 +92,6 @@ template <typename Base>
 struct AggregationDataWithNullKey : public Base
 {
     using Base::Base;
-    using Base::impls;
-
     bool has_null_key_data = false;
     AggregateDataPtr null_key_data = nullptr;
 };
@@ -102,6 +100,7 @@ template <typename Base>
 struct AggregationDataWithNullKeyTwoLevel : public Base
 {
     using Base::Base;
+    using Base::impls;
 
     template <typename Other>
     explicit AggregationDataWithNullKeyTwoLevel(const Other & other) : Base(other)
