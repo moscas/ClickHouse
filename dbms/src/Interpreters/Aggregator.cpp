@@ -1234,7 +1234,7 @@ void Aggregator::insertIntoBlockFromNullRowNotFinal(
 }
 
 template <typename Type>
-static void insertIntoBlockFromNullRowNotFinal(const Type &, MutableColumns &, AggregateColumnsData &)  {}
+static void insertIntoBlockFromNullRowNotFinal(const Type &, MutableColumns &, Aggregator::AggregateColumnsData &)  {}
 
 template <typename Method, typename Table>
 void NO_INLINE Aggregator::convertToBlockImplNotFinal(
