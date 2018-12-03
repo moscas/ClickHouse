@@ -1671,13 +1671,13 @@ protected:
         MutableColumns & key_columns,
         AggregateColumnsData & aggregate_columns) const;
 
-    template <bool two_level, typename Base>
+    template <typename Base>
     void insertIntoBlockFromNullRowFinal(
         const AggregationDataWithNullKey<Base> & data,
         MutableColumns & key_columns,
         MutableColumns & final_aggregate_columns);
 
-    template <bool two_level, typename Base>
+    template <typename Base>
     void insertIntoBlockFromNullRowNotFinal(
         const AggregationDataWithNullKey<Base> & data,
         MutableColumns & key_columns,

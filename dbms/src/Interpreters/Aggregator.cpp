@@ -1175,25 +1175,25 @@ void Aggregator::convertToBlockImpl(
     data.clearAndShrink();
 }
 
-template <bool two_level, typename Base>
+template <typename Base>
 void Aggregator::insertIntoBlockFromNullRowFinal(
     const AggregationDataWithNullKey<Base> & data,
     MutableColumns & key_columns,
     MutableColumns & final_aggregate_columns)
 {
-    if constexpr (!two_level)
+    if (data.has_null_key_data)
     {
-        if (data.has_null_key_data)
-        {
-            key_columns[0]->insert(Field()); /// Null
+        key_columns[0]->insert(Field()); /// Null
 
-            for (size_t i = 0; i < params.aggregates_size; ++i)
-                aggregate_functions[i]->insertResultInto(
-                        data.null_key_data + offsets_of_aggregate_states[i],
-                        *final_aggregate_columns[i]);
-        }
+        for (size_t i = 0; i < params.aggregates_size; ++i)
+            aggregate_functions[i]->insertResultInto(
+                    data.null_key_data + offsets_of_aggregate_states[i],
+                    *final_aggregate_columns[i]);
     }
 }
+
+template <typename Type>
+static void insertIntoBlockFromNullRowFinal(const Type &, MutableColumns &, MutableColumns &)  {}
 
 template <typename Method, typename Table>
 void NO_INLINE Aggregator::convertToBlockImplFinal(
@@ -1203,8 +1203,7 @@ void NO_INLINE Aggregator::convertToBlockImplFinal(
     MutableColumns & final_aggregate_columns) const
 {
     if constexpr (Method::low_cardinality_optimization)
-        if (!data_variants.isTwoLevel())
-            insertIntoBlockFromNullRowFinal<false>(data, key_columns, final_aggregate_columns);
+        insertIntoBlockFromNullRowFinal(data, key_columns, final_aggregate_columns);
 
     for (const auto & value : data)
     {
@@ -1219,23 +1218,23 @@ void NO_INLINE Aggregator::convertToBlockImplFinal(
     destroyImpl<Method>(data);      /// NOTE You can do better.
 }
 
-template <bool two_level, typename Base>
+template <typename Base>
 void Aggregator::insertIntoBlockFromNullRowNotFinal(
     const AggregationDataWithNullKey<Base> & data,
     MutableColumns & key_columns,
     AggregateColumnsData & aggregate_columns)
 {
-    if constexpr (!two_level)
+    if (data.has_null_key_data)
     {
-        if (data.has_null_key_data)
-        {
-            key_columns[0]->insert(Field()); /// Null
+        key_columns[0]->insert(Field()); /// Null
 
-            for (size_t i = 0; i < params.aggregates_size; ++i)
-                aggregate_columns[i]->push_back(data.null_key_data + offsets_of_aggregate_states[i]);
-        }
+        for (size_t i = 0; i < params.aggregates_size; ++i)
+            aggregate_columns[i]->push_back(data.null_key_data + offsets_of_aggregate_states[i]);
     }
 }
+
+template <typename Type>
+static void insertIntoBlockFromNullRowNotFinal(const Type &, MutableColumns &, AggregateColumnsData &)  {}
 
 template <typename Method, typename Table>
 void NO_INLINE Aggregator::convertToBlockImplNotFinal(
@@ -1245,8 +1244,7 @@ void NO_INLINE Aggregator::convertToBlockImplNotFinal(
     AggregateColumnsData & aggregate_columns) const
 {
     if constexpr (Method::low_cardinality_optimization)
-        if (!data_variants.isTwoLevel())
-            insertIntoBlockFromNullRowNotFinal<false>(data, key_columns, aggregate_columns);
+            insertIntoBlockFromNullRowNotFina(data, key_columns, aggregate_columns);
 
     for (auto & value : data)
     {
