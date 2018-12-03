@@ -1152,7 +1152,7 @@ void Aggregator::execute(const BlockInputStreamPtr & stream, AggregatedDataVaria
 }
 
 
-template <typename Method, typename Table, bool two_level>
+template <typename Method, typename Table>
 void Aggregator::convertToBlockImpl(
     Method & method,
     Table & data,
