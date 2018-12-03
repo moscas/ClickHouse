@@ -111,7 +111,7 @@ struct AggregationDataWithNullKeyTwoLevel : public Base
 };
 
 template <typename ... Types>
-using HashMapWithNullKey = AggregationDataWithNullKeyTwoLevel<HashMap<Types ...>>;
+using HashMapWithNullKey = AggregationDataWithNullKey<HashMap<Types ...>>;
 
 using AggregatedDataWithNullableUInt8Key = AggregationDataWithNullKey<AggregatedDataWithUInt8Key>;
 using AggregatedDataWithNullableUInt16Key = AggregationDataWithNullKey<AggregatedDataWithUInt16Key>;
@@ -119,10 +119,12 @@ using AggregatedDataWithNullableUInt16Key = AggregationDataWithNullKey<Aggregate
 using AggregatedDataWithNullableUInt64Key = AggregationDataWithNullKey<AggregatedDataWithUInt64Key>;
 using AggregatedDataWithNullableStringKey = AggregationDataWithNullKey<AggregatedDataWithStringKey>;
 
-using AggregatedDataWithNullableUInt64KeyTwoLevel = TwoLevelHashMap<UInt64, AggregateDataPtr, HashCRC32<UInt64>,
-        TwoLevelHashTableGrower<>, HashTableAllocator, HashMapWithNullKey>;
-using AggregatedDataWithNullableStringKeyTwoLevel = TwoLevelHashMapWithSavedHash<UInt64, AggregateDataPtr, HashCRC32<UInt64>,
-        TwoLevelHashTableGrower<>, HashTableAllocator, HashMapWithNullKey>;
+using AggregatedDataWithNullableUInt64KeyTwoLevel = AggregationDataWithNullKeyTwoLevel<
+        TwoLevelHashMap<UInt64, AggregateDataPtr, HashCRC32<UInt64>,
+        TwoLevelHashTableGrower<>, HashTableAllocator, HashMapWithNullKey>>;
+using AggregatedDataWithNullableStringKeyTwoLevel = AggregationDataWithNullKeyTwoLevel<
+        TwoLevelHashMapWithSavedHash<UInt64, AggregateDataPtr, HashCRC32<UInt64>,
+        TwoLevelHashTableGrower<>, HashTableAllocator, HashMapWithNullKey>>;
 
 /// Cache which can be used by aggregations method's states. Object is shared in all threads.
 struct AggregationStateCache
