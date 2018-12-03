@@ -111,7 +111,7 @@ struct AggregationDataWithNullKeyTwoLevel : public Base
 };
 
 template <typename ... Types>
-using HashMapWithNullKey = AggregationDataWithNullKey<HashMap<Types ...>>;
+using HashTableWithNullKey = AggregationDataWithNullKey<HashMapTable<Types ...>>;
 
 using AggregatedDataWithNullableUInt8Key = AggregationDataWithNullKey<AggregatedDataWithUInt8Key>;
 using AggregatedDataWithNullableUInt16Key = AggregationDataWithNullKey<AggregatedDataWithUInt16Key>;
