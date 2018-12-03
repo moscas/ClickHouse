@@ -1175,23 +1175,6 @@ void Aggregator::convertToBlockImpl(
     data.clearAndShrink();
 }
 
-template <typename Base>
-void Aggregator::insertIntoBlockFromNullRowFinal(
-    const AggregationDataWithNullKey<Base> & data,
-    MutableColumns & key_columns,
-    MutableColumns & final_aggregate_columns) const
-{
-    if (data.has_null_key_data)
-    {
-        key_columns[0]->insert(Field()); /// Null
-
-        for (size_t i = 0; i < params.aggregates_size; ++i)
-            aggregate_functions[i]->insertResultInto(
-                    data.null_key_data + offsets_of_aggregate_states[i],
-                    *final_aggregate_columns[i]);
-    }
-}
-
 template <typename Method, typename Table>
 void NO_INLINE Aggregator::convertToBlockImplFinal(
     Method & method,
@@ -1200,7 +1183,17 @@ void NO_INLINE Aggregator::convertToBlockImplFinal(
     MutableColumns & final_aggregate_columns) const
 {
     if constexpr (Method::low_cardinality_optimization)
-        insertIntoBlockFromNullRowFinal(data, key_columns, final_aggregate_columns);
+    {
+        if (data.has_null_key_data)
+        {
+            key_columns[0]->insert(Field()); /// Null
+
+            for (size_t i = 0; i < params.aggregates_size; ++i)
+                aggregate_functions[i]->insertResultInto(
+                    data.null_key_data + offsets_of_aggregate_states[i],
+                    *final_aggregate_columns[i]);
+        }
+    }
 
     for (const auto & value : data)
     {
@@ -1215,21 +1208,6 @@ void NO_INLINE Aggregator::convertToBlockImplFinal(
     destroyImpl<Method>(data);      /// NOTE You can do better.
 }
 
-template <typename Base>
-void Aggregator::insertIntoBlockFromNullRowNotFinal(
-    const AggregationDataWithNullKey<Base> & data,
-    MutableColumns & key_columns,
-    AggregateColumnsData & aggregate_columns) const
-{
-    if (data.has_null_key_data)
-    {
-        key_columns[0]->insert(Field()); /// Null
-
-        for (size_t i = 0; i < params.aggregates_size; ++i)
-            aggregate_columns[i]->push_back(data.null_key_data + offsets_of_aggregate_states[i]);
-    }
-}
-
 template <typename Method, typename Table>
 void NO_INLINE Aggregator::convertToBlockImplNotFinal(
     Method & method,
@@ -1238,7 +1216,15 @@ void NO_INLINE Aggregator::convertToBlockImplNotFinal(
     AggregateColumnsData & aggregate_columns) const
 {
     if constexpr (Method::low_cardinality_optimization)
-        insertIntoBlockFromNullRowNotFinal(data, key_columns, aggregate_columns);
+    {
+        if (data.has_null_key_data)
+        {
+            key_columns[0]->insert(Field()); /// Null
+
+            for (size_t i = 0; i < params.aggregates_size; ++i)
+                aggregate_columns[i]->push_back(data.null_key_data + offsets_of_aggregate_states[i]);
+        }
+    }
 
     for (auto & value : data)
     {
@@ -2409,6 +2395,15 @@ void NO_INLINE Aggregator::convertBlockToTwoLevelImpl(
     /// For every row.
     for (size_t i = 0; i < rows; ++i)
     {
+        if constexpr (Method::low_cardinality_optimization)
+        {
+            if (state.isNullAt(i))
+            {
+                selector[i] = 0;
+                continue;
+            }
+        }
+
         /// Obtain a key. Calculate bucket number from it.
         typename Method::Key key = state.getKey(key_columns, params.keys_size, i, key_sizes, keys, *pool);
 

@@ -93,16 +93,25 @@ struct AggregationDataWithNullKey : public Base
 {
     using Base::Base;
 
-    template <typename OtherBase>
-    explicit AggregationDataWithNullKey(const AggregationDataWithNullKey<OtherBase> & other) : Base(other)
-    {
-        has_null_key_data = other.has_null_key_data;
-        null_key_data = other.null_key_data;
-    }
-
     bool has_null_key_data = false;
     AggregateDataPtr null_key_data = nullptr;
 };
+
+template <typename Base>
+struct AggregationDataWithNullKeyTwoLevel : public Base
+{
+    using Base::Base;
+
+    template <typename Other>
+    explicit AggregationDataWithNullKeyTwoLevel(const Other & other) : Base(other)
+    {
+        impls[0].has_null_key_data = other.has_null_key_data;
+        impls[0].null_key_data = other.null_key_data;
+    }
+};
+
+template <typename ... Types>
+using HashMapWithNullKey = AggregationDataWithNullKeyTwoLevel<HashMap<Types ...>>;
 
 using AggregatedDataWithNullableUInt8Key = AggregationDataWithNullKey<AggregatedDataWithUInt8Key>;
 using AggregatedDataWithNullableUInt16Key = AggregationDataWithNullKey<AggregatedDataWithUInt16Key>;
@@ -110,8 +119,10 @@ using AggregatedDataWithNullableUInt16Key = AggregationDataWithNullKey<Aggregate
 using AggregatedDataWithNullableUInt64Key = AggregationDataWithNullKey<AggregatedDataWithUInt64Key>;
 using AggregatedDataWithNullableStringKey = AggregationDataWithNullKey<AggregatedDataWithStringKey>;
 
-using AggregatedDataWithNullableUInt64KeyTwoLevel = AggregationDataWithNullKey<AggregatedDataWithUInt64KeyTwoLevel>;
-using AggregatedDataWithNullableStringKeyTwoLevel = AggregationDataWithNullKey<AggregatedDataWithStringKeyTwoLevel>;
+using AggregatedDataWithNullableUInt64KeyTwoLevel = TwoLevelHashMap<UInt64, AggregateDataPtr, HashCRC32<UInt64>,
+        TwoLevelHashTableGrower<>, HashTableAllocator, HashMapWithNullKey>;
+using AggregatedDataWithNullableStringKeyTwoLevel = TwoLevelHashMapWithSavedHash<UInt64, AggregateDataPtr, HashCRC32<UInt64>,
+        TwoLevelHashTableGrower<>, HashTableAllocator, HashMapWithNullKey>;
 
 /// Cache which can be used by aggregations method's states. Object is shared in all threads.
 struct AggregationStateCache
@@ -566,6 +577,14 @@ struct AggregationMethodSingleLowCardinalityColumn : public SingleColumnMethod
 
                 return &Base::getAggregateData(it->second);
             }
+        }
+
+        ALWAYS_INLINE bool isNullAt(size_t i)
+        {
+            if (!is_nullable)
+                return false;
+
+            return getIndexAt(i) == 0;
         }
 
         ALWAYS_INLINE void cacheAggregateData(size_t i, AggregateDataPtr data)
@@ -1670,24 +1689,6 @@ protected:
         Table & data,
         MutableColumns & key_columns,
         AggregateColumnsData & aggregate_columns) const;
-
-    template <typename Base>
-    void insertIntoBlockFromNullRowFinal(
-        const AggregationDataWithNullKey<Base> & data,
-        MutableColumns & key_columns,
-        MutableColumns & final_aggregate_columns) const;
-
-    template <typename Base>
-    void insertIntoBlockFromNullRowNotFinal(
-        const AggregationDataWithNullKey<Base> & data,
-        MutableColumns & key_columns,
-        AggregateColumnsData & aggregate_columns) const;
-
-    template <typename Type>
-    void insertIntoBlockFromNullRowFinal(const Type &, MutableColumns &, MutableColumns &) const {}
-
-    template <typename Type>
-    void insertIntoBlockFromNullRowNotFinal(const Type &, MutableColumns &, Aggregator::AggregateColumnsData &) const {}
 
     template <typename Filler>
     Block prepareBlockAndFill(
