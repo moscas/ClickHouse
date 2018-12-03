@@ -1244,7 +1244,7 @@ void NO_INLINE Aggregator::convertToBlockImplNotFinal(
     AggregateColumnsData & aggregate_columns) const
 {
     if constexpr (Method::low_cardinality_optimization)
-            insertIntoBlockFromNullRowNotFina(data, key_columns, aggregate_columns);
+        insertIntoBlockFromNullRowNotFinal(data, key_columns, aggregate_columns);
 
     for (auto & value : data)
     {
