@@ -1648,28 +1648,41 @@ protected:
     void mergeSingleLevelDataImpl(
         ManyAggregatedDataVariants & non_empty_data) const;
 
-    template <typename Method, typename Table>
+    template <typename Method, typename Table, bool two_level>
     void convertToBlockImpl(
         Method & method,
         Table & data,
         MutableColumns & key_columns,
         AggregateColumnsData & aggregate_columns,
         MutableColumns & final_aggregate_columns,
-        bool final) const;
+        bool final,
+        bool two_level) const;
 
-    template <typename Method, typename Table>
+    template <typename Method, typename Table, bool two_level>
     void convertToBlockImplFinal(
         Method & method,
         Table & data,
         MutableColumns & key_columns,
         MutableColumns & final_aggregate_columns) const;
 
-    template <typename Method, typename Table>
+    template <typename Method, typename Table, bool two_level>
     void convertToBlockImplNotFinal(
         Method & method,
         Table & data,
         MutableColumns & key_columns,
         AggregateColumnsData & aggregate_columns) const;
+
+    template <typename Base, bool two_level>
+    void Aggregator::insertIntoBlockFromNullRowFinal(
+        const AggregationDataWithNullKey<Base> & data,
+        MutableColumns & key_columns,
+        MutableColumns & final_aggregate_columns);
+
+    template <typename Base, bool two_level>
+    void Aggregator::insertIntoBlockFromNullRowNotFinal(
+        const AggregationDataWithNullKey<Base> & data,
+        MutableColumns & key_columns,
+        AggregateColumnsData & aggregate_columns);
 
     template <typename Filler>
     Block prepareBlockAndFill(

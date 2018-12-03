@@ -1014,6 +1014,17 @@ Block Aggregator::convertOneBucketToBlock(
             MutableColumns & final_aggregate_columns,
             bool final_)
         {
+            if constexpr (Method::low_cardinality_optimization)
+            {
+                if (bucket == 0)
+                {
+                    if (final_)
+                        insertIntoBlockFromNullRowFinal<false>(method.data, key_columns, final_aggregate_columns);
+                    else
+                        insertIntoBlockFromNullRowNotFinal<false>(method.data, key_columns, final_aggregate_columns);
+                }
+            }
+
             convertToBlockImpl(method, method.data.impls[bucket],
                 key_columns, aggregate_columns, final_aggregate_columns, final_);
         });
@@ -1141,7 +1152,7 @@ void Aggregator::execute(const BlockInputStreamPtr & stream, AggregatedDataVaria
 }
 
 
-template <typename Method, typename Table>
+template <typename Method, typename Table, bool two_level>
 void Aggregator::convertToBlockImpl(
     Method & method,
     Table & data,
@@ -1160,20 +1171,17 @@ void Aggregator::convertToBlockImpl(
         convertToBlockImplFinal(method, data, key_columns, final_aggregate_columns);
     else
         convertToBlockImplNotFinal(method, data, key_columns, aggregate_columns);
-
     /// In order to release memory early.
     data.clearAndShrink();
 }
 
-
-template <typename Method, typename Table>
-void NO_INLINE Aggregator::convertToBlockImplFinal(
-    Method & method,
-    Table & data,
+template <typename Base, bool two_level>
+void Aggregator::insertIntoBlockFromNullRowFinal(
+    const AggregationDataWithNullKey<Base> & data,
     MutableColumns & key_columns,
-    MutableColumns & final_aggregate_columns) const
+    MutableColumns & final_aggregate_columns)
 {
-    if constexpr (Method::low_cardinality_optimization)
+    if constexpr (!two_level)
     {
         if (data.has_null_key_data)
         {
@@ -1185,6 +1193,18 @@ void NO_INLINE Aggregator::convertToBlockImplFinal(
                         *final_aggregate_columns[i]);
         }
     }
+}
+
+template <typename Method, typename Table>
+void NO_INLINE Aggregator::convertToBlockImplFinal(
+    Method & method,
+    Table & data,
+    MutableColumns & key_columns,
+    MutableColumns & final_aggregate_columns) const
+{
+    if constexpr (Method::low_cardinality_optimization)
+        if (!data_variants.isTwoLevel())
+            insertIntoBlockFromNullRowFinal<false>(data, key_columns, final_aggregate_columns);
 
     for (const auto & value : data)
     {
@@ -1199,14 +1219,13 @@ void NO_INLINE Aggregator::convertToBlockImplFinal(
     destroyImpl<Method>(data);      /// NOTE You can do better.
 }
 
-template <typename Method, typename Table>
-void NO_INLINE Aggregator::convertToBlockImplNotFinal(
-    Method & method,
-    Table & data,
+template <typename Base, bool two_level>
+void Aggregator::insertIntoBlockFromNullRowNotFinal(
+    const AggregationDataWithNullKey<Base> & data,
     MutableColumns & key_columns,
-    AggregateColumnsData & aggregate_columns) const
+    AggregateColumnsData & aggregate_columns)
 {
-    if constexpr (Method::low_cardinality_optimization)
+    if constexpr (!two_level)
     {
         if (data.has_null_key_data)
         {
@@ -1216,6 +1235,18 @@ void NO_INLINE Aggregator::convertToBlockImplNotFinal(
                 aggregate_columns[i]->push_back(data.null_key_data + offsets_of_aggregate_states[i]);
         }
     }
+}
+
+template <typename Method, typename Table>
+void NO_INLINE Aggregator::convertToBlockImplNotFinal(
+    Method & method,
+    Table & data,
+    MutableColumns & key_columns,
+    AggregateColumnsData & aggregate_columns) const
+{
+    if constexpr (Method::low_cardinality_optimization)
+        if (!data_variants.isTwoLevel())
+            insertIntoBlockFromNullRowNotFinal<false>(data, key_columns, aggregate_columns);
 
     for (auto & value : data)
     {
