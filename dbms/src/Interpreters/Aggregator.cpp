@@ -1192,9 +1192,6 @@ void Aggregator::insertIntoBlockFromNullRowFinal(
     }
 }
 
-template <typename Type>
-static void insertIntoBlockFromNullRowFinal(const Type &, MutableColumns &, MutableColumns &)  {}
-
 template <typename Method, typename Table>
 void NO_INLINE Aggregator::convertToBlockImplFinal(
     Method & method,
@@ -1232,9 +1229,6 @@ void Aggregator::insertIntoBlockFromNullRowNotFinal(
             aggregate_columns[i]->push_back(data.null_key_data + offsets_of_aggregate_states[i]);
     }
 }
-
-template <typename Type>
-static void insertIntoBlockFromNullRowNotFinal(const Type &, MutableColumns &, Aggregator::AggregateColumnsData &)  {}
 
 template <typename Method, typename Table>
 void NO_INLINE Aggregator::convertToBlockImplNotFinal(
