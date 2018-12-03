@@ -1021,7 +1021,7 @@ Block Aggregator::convertOneBucketToBlock(
                     if (final_)
                         insertIntoBlockFromNullRowFinal(method.data, key_columns, final_aggregate_columns);
                     else
-                        insertIntoBlockFromNullRowNotFinal(method.data, key_columns, final_aggregate_columns);
+                        insertIntoBlockFromNullRowNotFinal(method.data, key_columns, aggregate_columns);
                 }
             }
 
