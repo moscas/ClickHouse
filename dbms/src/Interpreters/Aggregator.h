@@ -1657,7 +1657,7 @@ protected:
         MutableColumns & final_aggregate_columns,
         bool final) const;
 
-    template <typename Method, typename Table, bool two_level>
+    template <typename Method, typename Table>
     void convertToBlockImplFinal(
         Method & method,
         Table & data,
