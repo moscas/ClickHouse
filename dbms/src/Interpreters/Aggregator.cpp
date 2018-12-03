@@ -1173,7 +1173,7 @@ void NO_INLINE Aggregator::convertToBlockImplFinal(
     MutableColumns & key_columns,
     MutableColumns & final_aggregate_columns) const
 {
-    if constexpr (method::low_cardinality_optimization)
+    if constexpr (Method::low_cardinality_optimization)
     {
         if (data.has_null_key_data)
         {
@@ -1206,7 +1206,7 @@ void NO_INLINE Aggregator::convertToBlockImplNotFinal(
     MutableColumns & key_columns,
     AggregateColumnsData & aggregate_columns) const
 {
-    if constexpr (method::low_cardinality_optimization)
+    if constexpr (Method::low_cardinality_optimization)
     {
         if (data.has_null_key_data)
         {
