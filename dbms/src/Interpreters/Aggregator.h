@@ -1675,13 +1675,13 @@ protected:
     void insertIntoBlockFromNullRowFinal(
         const AggregationDataWithNullKey<Base> & data,
         MutableColumns & key_columns,
-        MutableColumns & final_aggregate_columns);
+        MutableColumns & final_aggregate_columns) const;
 
     template <typename Base>
     void insertIntoBlockFromNullRowNotFinal(
         const AggregationDataWithNullKey<Base> & data,
         MutableColumns & key_columns,
-        AggregateColumnsData & aggregate_columns);
+        AggregateColumnsData & aggregate_columns) const;
 
     template <typename Filler>
     Block prepareBlockAndFill(

@@ -1179,7 +1179,7 @@ template <typename Base>
 void Aggregator::insertIntoBlockFromNullRowFinal(
     const AggregationDataWithNullKey<Base> & data,
     MutableColumns & key_columns,
-    MutableColumns & final_aggregate_columns)
+    MutableColumns & final_aggregate_columns) const
 {
     if (data.has_null_key_data)
     {
@@ -1222,7 +1222,7 @@ template <typename Base>
 void Aggregator::insertIntoBlockFromNullRowNotFinal(
     const AggregationDataWithNullKey<Base> & data,
     MutableColumns & key_columns,
-    AggregateColumnsData & aggregate_columns)
+    AggregateColumnsData & aggregate_columns) const
 {
     if (data.has_null_key_data)
     {
