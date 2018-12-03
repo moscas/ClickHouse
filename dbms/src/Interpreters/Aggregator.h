@@ -121,10 +121,10 @@ using AggregatedDataWithNullableStringKey = AggregationDataWithNullKey<Aggregate
 
 using AggregatedDataWithNullableUInt64KeyTwoLevel = AggregationDataWithNullKeyTwoLevel<
         TwoLevelHashMap<UInt64, AggregateDataPtr, HashCRC32<UInt64>,
-        TwoLevelHashTableGrower<>, HashTableAllocator, HashMapWithNullKey>>;
+        TwoLevelHashTableGrower<>, HashTableAllocator, HashTableWithNullKey>>;
 using AggregatedDataWithNullableStringKeyTwoLevel = AggregationDataWithNullKeyTwoLevel<
         TwoLevelHashMapWithSavedHash<UInt64, AggregateDataPtr, HashCRC32<UInt64>,
-        TwoLevelHashTableGrower<>, HashTableAllocator, HashMapWithNullKey>>;
+        TwoLevelHashTableGrower<>, HashTableAllocator, HashTableWithNullKey>>;
 
 /// Cache which can be used by aggregations method's states. Object is shared in all threads.
 struct AggregationStateCache
