@@ -1175,7 +1175,7 @@ void Aggregator::convertToBlockImpl(
     data.clearAndShrink();
 }
 
-template <typename Base, bool two_level>
+template <bool two_level, typename Base>
 void Aggregator::insertIntoBlockFromNullRowFinal(
     const AggregationDataWithNullKey<Base> & data,
     MutableColumns & key_columns,
@@ -1219,7 +1219,7 @@ void NO_INLINE Aggregator::convertToBlockImplFinal(
     destroyImpl<Method>(data);      /// NOTE You can do better.
 }
 
-template <typename Base, bool two_level>
+template <bool two_level, typename Base>
 void Aggregator::insertIntoBlockFromNullRowNotFinal(
     const AggregationDataWithNullKey<Base> & data,
     MutableColumns & key_columns,
