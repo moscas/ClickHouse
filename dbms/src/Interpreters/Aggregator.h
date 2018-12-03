@@ -88,6 +88,31 @@ using AggregatedDataWithStringKeyHash64 = HashMapWithSavedHash<StringRef, Aggreg
 using AggregatedDataWithKeys128Hash64 = HashMap<UInt128, AggregateDataPtr, UInt128Hash>;
 using AggregatedDataWithKeys256Hash64 = HashMap<UInt256, AggregateDataPtr, UInt256Hash>;
 
+template <typename Base>
+struct AggregationDataWithNullKey : public Base
+{
+    using Base::Base;
+
+    template <typename OtherBase>
+    explicit AggregationDataWithNullKey(const AggregationDataWithNullKey<OtherBase> & other) : Base(other)
+    {
+        has_null_key_data = other.has_null_key_data;
+        null_key_data = other.null_key_data;
+    }
+
+    bool has_null_key_data = false;
+    AggregateDataPtr null_key_data = nullptr;
+};
+
+using AggregatedDataWithNullableUInt8Key = AggregatedDataWithUInt8Key;
+using AggregatedDataWithNullableUInt16Key = AggregatedDataWithUInt16Key;
+
+using AggregatedDataWithNullableUInt64Key = AggregatedDataWithUInt64Key;
+using AggregatedDataWithNullableStringKey = AggregatedDataWithStringKey;
+
+using AggregatedDataWithNullableUInt64KeyTwoLevel = AggregatedDataWithUInt64KeyTwoLevel;
+using AggregatedDataWithNullableStringKeyTwoLevel = AggregatedDataWithStringKeyTwoLevel;
+
 /// Cache which can be used by aggregations method's states. Object is shared in all threads.
 struct AggregationStateCache
 {
@@ -403,8 +428,10 @@ struct AggregationMethodSingleLowCardinalityColumn : public SingleColumnMethod
         ColumnPtr dictionary_holder;
 
         /// Cache AggregateDataPtr for current column in order to decrease the number of hash table usages.
-        PaddedPODArray<AggregateDataPtr> aggregate_data;
-        PaddedPODArray<AggregateDataPtr> * aggregate_data_cache;
+        PaddedPODArray<AggregateDataPtr> aggregate_data_cache;
+
+        /// If initialized column is nullable.
+        bool is_nullable = false;
 
         void init(ColumnRawPtrs &)
         {
@@ -429,7 +456,8 @@ struct AggregationMethodSingleLowCardinalityColumn : public SingleColumnMethod
                                 + demangle(typeid(cached_val).name()), ErrorCodes::LOGICAL_ERROR);
             }
 
-            auto * dict = column->getDictionary().getNestedColumn().get();
+            auto * dict = column->getDictionary().getNestedNotNullableColumn().get();
+            is_nullable = column->getDictionary().nestedColumnIsNullable();
             key = {dict};
             bool is_shared_dict = column->isSharedDictionary();
 
@@ -463,8 +491,7 @@ struct AggregationMethodSingleLowCardinalityColumn : public SingleColumnMethod
             }
 
             AggregateDataPtr default_data = nullptr;
-            aggregate_data.assign(key[0]->size(), default_data);
-            aggregate_data_cache = &aggregate_data;
+            aggregate_data_cache.assign(key[0]->size(), default_data);
 
             size_of_index_type = column->getSizeOfIndexType();
             positions = column->getIndexesPtr().get();
@@ -507,10 +534,18 @@ struct AggregationMethodSingleLowCardinalityColumn : public SingleColumnMethod
             Arena & pool)
         {
             size_t row = getIndexAt(i);
-            if ((*aggregate_data_cache)[row])
+
+            if (is_nullable && row == 0)
+            {
+                inserted = !data.has_null_key_data;
+                data.has_null_key_data = true;
+                return &data.null_key_data;
+            }
+
+            if (aggregate_data_cache[row])
             {
                 inserted = false;
-                return &(*aggregate_data_cache)[row];
+                return &aggregate_data_cache[row];
             }
             else
             {
@@ -527,7 +562,7 @@ struct AggregationMethodSingleLowCardinalityColumn : public SingleColumnMethod
                 if (inserted)
                     Base::onNewKey(*it, keys_size, keys, pool);
                 else
-                    (*aggregate_data_cache)[row] = Base::getAggregateData(it->second);
+                    aggregate_data_cache[row] = Base::getAggregateData(it->second);
 
                 return &Base::getAggregateData(it->second);
             }
@@ -536,14 +571,18 @@ struct AggregationMethodSingleLowCardinalityColumn : public SingleColumnMethod
         ALWAYS_INLINE void cacheAggregateData(size_t i, AggregateDataPtr data)
         {
             size_t row = getIndexAt(i);
-            (*aggregate_data_cache)[row] = data;
+            aggregate_data_cache[row] = data;
         }
 
         template <typename D>
         ALWAYS_INLINE AggregateDataPtr * findFromRow(D & data, size_t i)
         {
             size_t row = getIndexAt(i);
-            if (!(*aggregate_data_cache)[row])
+
+            if (is_nullable && row == 0)
+                return data.has_null_key_data ? &data.null_key_data : nullptr;
+
+            if (!aggregate_data_cache[row])
             {
                 ColumnRawPtrs key_columns;
                 Sizes key_sizes;
@@ -558,9 +597,9 @@ struct AggregationMethodSingleLowCardinalityColumn : public SingleColumnMethod
                     it = data.find(key);
 
                 if (it != data.end())
-                    (*aggregate_data_cache)[row] = Base::getAggregateData(it->second);
+                    aggregate_data_cache[row] = Base::getAggregateData(it->second);
             }
-            return &(*aggregate_data_cache)[row];
+            return &aggregate_data_cache[row];
         }
     };
 
@@ -971,17 +1010,17 @@ struct AggregatedDataVariants : private boost::noncopyable
     std::unique_ptr<AggregationMethodKeysFixed<AggregatedDataWithKeys256TwoLevel, true>>     nullable_keys256_two_level;
 
     /// Support for low cardinality.
-    std::unique_ptr<AggregationMethodSingleLowCardinalityColumn<AggregationMethodOneNumber<UInt8, AggregatedDataWithUInt8Key>>> low_cardinality_key8;
-    std::unique_ptr<AggregationMethodSingleLowCardinalityColumn<AggregationMethodOneNumber<UInt16, AggregatedDataWithUInt16Key>>> low_cardinality_key16;
-    std::unique_ptr<AggregationMethodSingleLowCardinalityColumn<AggregationMethodOneNumber<UInt32, AggregatedDataWithUInt64Key>>> low_cardinality_key32;
-    std::unique_ptr<AggregationMethodSingleLowCardinalityColumn<AggregationMethodOneNumber<UInt64, AggregatedDataWithUInt64Key>>> low_cardinality_key64;
-    std::unique_ptr<AggregationMethodSingleLowCardinalityColumn<AggregationMethodString<AggregatedDataWithStringKey>>> low_cardinality_key_string;
-    std::unique_ptr<AggregationMethodSingleLowCardinalityColumn<AggregationMethodFixedString<AggregatedDataWithStringKey>>> low_cardinality_key_fixed_string;
+    std::unique_ptr<AggregationMethodSingleLowCardinalityColumn<AggregationMethodOneNumber<UInt8, AggregatedDataWithNullableUInt8Key>>> low_cardinality_key8;
+    std::unique_ptr<AggregationMethodSingleLowCardinalityColumn<AggregationMethodOneNumber<UInt16, AggregatedDataWithNullableUInt16Key>>> low_cardinality_key16;
+    std::unique_ptr<AggregationMethodSingleLowCardinalityColumn<AggregationMethodOneNumber<UInt32, AggregatedDataWithNullableUInt64Key>>> low_cardinality_key32;
+    std::unique_ptr<AggregationMethodSingleLowCardinalityColumn<AggregationMethodOneNumber<UInt64, AggregatedDataWithNullableUInt64Key>>> low_cardinality_key64;
+    std::unique_ptr<AggregationMethodSingleLowCardinalityColumn<AggregationMethodString<AggregatedDataWithNullableStringKey>>> low_cardinality_key_string;
+    std::unique_ptr<AggregationMethodSingleLowCardinalityColumn<AggregationMethodFixedString<AggregatedDataWithNullableStringKey>>> low_cardinality_key_fixed_string;
 
-    std::unique_ptr<AggregationMethodSingleLowCardinalityColumn<AggregationMethodOneNumber<UInt32, AggregatedDataWithUInt64KeyTwoLevel>>> low_cardinality_key32_two_level;
-    std::unique_ptr<AggregationMethodSingleLowCardinalityColumn<AggregationMethodOneNumber<UInt64, AggregatedDataWithUInt64KeyTwoLevel>>> low_cardinality_key64_two_level;
-    std::unique_ptr<AggregationMethodSingleLowCardinalityColumn<AggregationMethodString<AggregatedDataWithStringKeyTwoLevel>>> low_cardinality_key_string_two_level;
-    std::unique_ptr<AggregationMethodSingleLowCardinalityColumn<AggregationMethodFixedString<AggregatedDataWithStringKeyTwoLevel>>> low_cardinality_key_fixed_string_two_level;
+    std::unique_ptr<AggregationMethodSingleLowCardinalityColumn<AggregationMethodOneNumber<UInt32, AggregatedDataWithNullableUInt64KeyTwoLevel>>> low_cardinality_key32_two_level;
+    std::unique_ptr<AggregationMethodSingleLowCardinalityColumn<AggregationMethodOneNumber<UInt64, AggregatedDataWithNullableUInt64KeyTwoLevel>>> low_cardinality_key64_two_level;
+    std::unique_ptr<AggregationMethodSingleLowCardinalityColumn<AggregationMethodString<AggregatedDataWithNullableStringKeyTwoLevel>>> low_cardinality_key_string_two_level;
+    std::unique_ptr<AggregationMethodSingleLowCardinalityColumn<AggregationMethodFixedString<AggregatedDataWithNullableStringKeyTwoLevel>>> low_cardinality_key_fixed_string_two_level;
 
     std::unique_ptr<AggregationMethodKeysFixed<AggregatedDataWithKeys128, false, true>>      low_cardinality_keys128;
     std::unique_ptr<AggregationMethodKeysFixed<AggregatedDataWithKeys256, false, true>>      low_cardinality_keys256;

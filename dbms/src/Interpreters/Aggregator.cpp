@@ -453,6 +453,27 @@ AggregatedDataVariants::Type Aggregator::chooseAggregationMethod()
                 return AggregatedDataVariants::Type::nullable_keys256;
         }
 
+        if (has_low_cardinality && params.keys_size == 1)
+        {
+            if (types_removed_nullable[0]->isValueRepresentedByNumber())
+            {
+                size_t size_of_field = types_removed_nullable[0]->getSizeOfValueInMemory();
+
+                if (size_of_field == 1)
+                    return AggregatedDataVariants::Type::low_cardinality_key8;
+                if (size_of_field == 2)
+                    return AggregatedDataVariants::Type::low_cardinality_key16;
+                if (size_of_field == 4)
+                    return AggregatedDataVariants::Type::low_cardinality_key32;
+                if (size_of_field == 8)
+                    return AggregatedDataVariants::Type::low_cardinality_key64;
+            }
+            else if (isString(types_removed_nullable[0]))
+                return AggregatedDataVariants::Type::low_cardinality_key_string;
+            else if (isFixedString(types_removed_nullable[0]))
+                return AggregatedDataVariants::Type::low_cardinality_key_fixed_string;
+        }
+
         /// Fallback case.
         return AggregatedDataVariants::Type::serialized;
     }
@@ -1152,6 +1173,19 @@ void NO_INLINE Aggregator::convertToBlockImplFinal(
     MutableColumns & key_columns,
     MutableColumns & final_aggregate_columns) const
 {
+    if constexpr (method::low_cardinality_optimization)
+    {
+        if (data.has_null_key_data)
+        {
+            key_columns[0]->insert(Field()); /// Null
+
+            for (size_t i = 0; i < params.aggregates_size; ++i)
+                aggregate_functions[i]->insertResultInto(
+                        data.null_key_data + offsets_of_aggregate_states[i],
+                        *final_aggregate_columns[i]);
+        }
+    }
+
     for (const auto & value : data)
     {
         method.insertKeyIntoColumns(value, key_columns, key_sizes);
@@ -1172,6 +1206,17 @@ void NO_INLINE Aggregator::convertToBlockImplNotFinal(
     MutableColumns & key_columns,
     AggregateColumnsData & aggregate_columns) const
 {
+    if constexpr (method::low_cardinality_optimization)
+    {
+        if (data.has_null_key_data)
+        {
+            key_columns[0]->insert(Field()); /// Null
+
+            for (size_t i = 0; i < params.aggregates_size; ++i)
+                aggregate_columns[i]->push_back(data.null_key_data + offsets_of_aggregate_states[i]);
+        }
+    }
+
     for (auto & value : data)
     {
         method.insertKeyIntoColumns(value, key_columns, key_sizes);
